@@ -10,6 +10,7 @@ class TestChartDataModel : public QObject
     Q_OBJECT
 
     QCustomPlot *plot = nullptr;
+    QCustomPlot *secondPlot = nullptr;
     ChartDataModel *model = nullptr;
 
     QCPGraph *addGraph(const QString &name)
@@ -24,6 +25,7 @@ private slots:
     void init()
     {
         plot = new QCustomPlot;
+        secondPlot = new QCustomPlot;
         model = new ChartDataModel;
         new QAbstractItemModelTester(model, QAbstractItemModelTester::FailureReportingMode::QtTest, model);
         model->setPlot(plot);
@@ -33,6 +35,7 @@ private slots:
     {
         delete model;
         delete plot;
+        delete secondPlot;
     }
 
     void rowsMergeGraphsByTime()
@@ -55,6 +58,26 @@ private slots:
         QCOMPARE(cell(3, 2), QString("-3"));
         QCOMPARE(cell(0, 0), ChartDataModel::timeText(1.0));
         QCOMPARE(ChartDataModel::timeText(3600 * 10 + 0.25), QString("10:00:00:250"));
+    }
+
+    void mergesGraphsFromMultiplePlots()
+    {
+        QCPGraph *gyro = addGraph("gx");
+        gyro->addData({1.0, 2.0}, {10, 20});
+        QCPGraph *accel = secondPlot->addGraph();
+        accel->setName("ax");
+        accel->addData({1.0, 1.5}, {100, 150});
+
+        model->setPlots({plot, secondPlot});
+        QCOMPARE(model->columnCount(), 3);
+        QCOMPARE(model->headerData(1, Qt::Horizontal).toString(), QString("gx"));
+        QCOMPARE(model->headerData(2, Qt::Horizontal).toString(), QString("ax"));
+        QCOMPARE(model->rowCount(), 3);
+        QCOMPARE(cell(0, 1), QString("10"));
+        QCOMPARE(cell(0, 2), QString("100"));
+        QCOMPARE(cell(1, 1), QString());
+        QCOMPARE(cell(1, 2), QString("150"));
+        QCOMPARE(cell(2, 1), QString("20"));
     }
 
     void repeatedKeyGetsOwnRows()

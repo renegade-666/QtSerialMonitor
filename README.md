@@ -64,6 +64,10 @@ Time stamps come from the PC clock by default. To use your device's time instead
 
 **CSV files** (also the app's own logs) can be loaded with **File → Import...** (Ctrl+O). The first row is the header; `,` `;` and tab delimiters, quoted fields and empty cells are handled.
 
+## Separate IMU charts
+
+When using the plotter with an IMU, the channel names `gx`, `gy`, `gz` are displayed in the Gyroscope chart, while `ax`, `ay`, `az` are displayed in a separate Accelerometer chart. Both charts update from the same serial stream and share the time/history controls. Other channel names continue to appear in the original chart.
+
 ## 3D orientation view
 
 <img src="docs/_screenshots/v2-orientation.png" width="60%" alt="3D orientation view">

@@ -141,3 +141,7 @@ at full CPU; it now processes ~650 lines/s with smooth lines and ~950 lines/s at
 
 ## [1.53]
 - Last release built with qmake / Qt 5.
+
+
+## Unreleased
+- Split IMU plotting into separate gyroscope (`gx`, `gy`, `gz`) and accelerometer (`ax`, `ay`, `az`) charts.

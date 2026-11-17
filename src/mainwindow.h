@@ -261,6 +261,7 @@ private:
     void showChartAtTime(double key);      // centre the chart on this time
     void goToChartViewInSamples();         // select the first row of the time the chart shows
     QPointer<QCPItemStraightLine> sampleMarker;
+    QPointer<QCPItemStraightLine> accelerometerSampleMarker;
     void processLogWrite(QString rawLine, QStringList labelList, QList<double> dataList, QList<long> timeList);
     void processTable(QStringList labels, QList<double> values, QList<long> timeStamps);
     void clearParsedDataTable();
@@ -276,6 +277,7 @@ private:
     void setRepeatSend(bool enabled);
     CommandHistory commandHistory;
     ChartDataModel chartDataModel;
+    QCustomPlot *accelerometerChart = nullptr; // ax / ay / az; widgetChart remains the gyroscope plot
     OrientationView *orientationView = nullptr;
     double orientationValues[3] = {0, 0, 0}; // roll, pitch, yaw as received
     bool orientationReceived = false;

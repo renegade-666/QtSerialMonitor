@@ -21,6 +21,7 @@ public:
     explicit ChartDataModel(QObject *parent = nullptr);
 
     void setPlot(QCustomPlot *plot);
+    void setPlots(const QList<QCustomPlot *> &plots);
 
     // Catches up with the chart: appends new rows and drops the ones the chart no longer holds.
     // Rebuilds everything when graphs were added/removed/cleared or after invalidate().
@@ -47,7 +48,7 @@ private:
     void rebuild(const QList<QCPGraph *> &graphs);
     void rememberLastKeys();
 
-    QPointer<QCustomPlot> plot;
+    QList<QPointer<QCustomPlot>> plots;
     QList<QPointer<QCPGraph>> graphs; // columns 1..n
     QStringList names;
     QList<double> lastKeys;           // per graph, to notice cleared / rewritten data

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version='1.0' encoding='UTF-8'?>
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
@@ -322,7 +322,7 @@
                       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Change text format&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
                      <property name="whatsThis">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose message display format:&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;- text&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;- hex (base 16)&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;- binary (base 2)&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose message display format:&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:600;"&gt;- text&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:600;"&gt;- hex (base 16)&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:600;"&gt;- binary (base 2)&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
                      <item>
                       <property name="text">
@@ -390,7 +390,7 @@
                       </sizepolicy>
                      </property>
                      <property name="whatsThis">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If checked, pressed key will be immidietly sent to the device via Serial or UDP, depending on the active control section tab as long as the &lt;span style=&quot; font-weight:600;&quot;&gt;text window remains focused&lt;/span&gt;.&lt;/p&gt;&lt;p&gt;This is very useful for creating a rapidly accesible control interface via serial i.e, you could quickly regulate motor's PWM output by holding &amp;quot;+&amp;quot; or &amp;quot;-&amp;quot; keys, instead of typing &amp;quot;set value ... &amp;quot; every time you need to make a change.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If checked, pressed key will be immidietly sent to the device via Serial or UDP, depending on the active control section tab as long as the &lt;span style=" font-weight:600;"&gt;text window remains focused&lt;/span&gt;.&lt;/p&gt;&lt;p&gt;This is very useful for creating a rapidly accesible control interface via serial i.e, you could quickly regulate motor's PWM output by holding &amp;quot;+&amp;quot; or &amp;quot;-&amp;quot; keys, instead of typing &amp;quot;set value ... &amp;quot; every time you need to make a change.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
                      <property name="text">
                       <string>Send Key</string>
@@ -463,7 +463,7 @@
                       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Text processing modes&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
                      <property name="whatsThis">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose text post-processing:&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;- None&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;- Trim - remove whitespace form the start and the end of each line.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;- Simplify - removes whitespace form the start and the end, and has each sequence of internal whitespace replaced with a single space.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Choose text post-processing:&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:600;"&gt;- None&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:600;"&gt;- Trim - remove whitespace form the start and the end of each line.&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:600;"&gt;- Simplify - removes whitespace form the start and the end, and has each sequence of internal whitespace replaced with a single space.&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
                      <item>
                       <property name="text">
@@ -510,7 +510,7 @@
                       <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;New line print method&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
                      <property name="whatsThis">
-                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Change how new text line is added:&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;- Insert - moves the cursor to the end of document and simply pastes new data. Similar to &amp;quot;print()&amp;quot; in Arduino&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=&quot; font-weight:600;&quot;&gt;- Append - adds new text as newline. Acts as &amp;quot;println()&amp;quot;. &lt;/span&gt;&lt;/p&gt;&lt;p&gt;One can use &amp;quot;Append&amp;quot; mode + &amp;quot;trim&amp;quot; or &amp;quot;simplify&amp;quot; processing options to remove all control characters form the text while still adding it as newline without the escape sequences present.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                      <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Change how new text line is added:&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:600;"&gt;- Insert - moves the cursor to the end of document and simply pastes new data. Similar to &amp;quot;print()&amp;quot; in Arduino&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=" font-weight:600;"&gt;- Append - adds new text as newline. Acts as &amp;quot;println()&amp;quot;. &lt;/span&gt;&lt;/p&gt;&lt;p&gt;One can use &amp;quot;Append&amp;quot; mode + &amp;quot;trim&amp;quot; or &amp;quot;simplify&amp;quot; processing options to remove all control characters form the text while still adding it as newline without the escape sequences present.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                      </property>
                      <property name="sizeAdjustPolicy">
                       <enum>QComboBox::AdjustToContents</enum>
@@ -724,21 +724,43 @@
                    <cursorShape>CrossCursor</cursorShape>
                   </property>
                   <property name="whatsThis">
-                   <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
-&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+                   <string>&lt;!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0//EN" "http://www.w3.org/TR/REC-html40/strict.dtd"&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name="qrichtext" content="1" /&gt;&lt;style type="text/css"&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;This is the chart view widget, where plotted data is displayed. &lt;/p&gt;
-&lt;p align=&quot;justify&quot; style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;- &lt;span style=&quot; font-weight:600;&quot;&gt;Hold left mouse button&lt;/span&gt; to drag the chart view (Scroll X needs to be off !);&lt;/p&gt;
-&lt;p align=&quot;justify&quot; style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;- Click&lt;span style=&quot; font-weight:600;&quot;&gt; right mouse button&lt;/span&gt; to activate the context menu - can be used on legend as well;&lt;/p&gt;
-&lt;p align=&quot;justify&quot; style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;- &lt;span style=&quot; font-weight:600;&quot;&gt;Double click&lt;/span&gt; to fit view to contents;&lt;/p&gt;
-&lt;p align=&quot;justify&quot; style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;- Use&lt;span style=&quot; font-weight:600;&quot;&gt; mouse wheel&lt;/span&gt; to zoom in/out;&lt;/p&gt;
-&lt;p align=&quot;justify&quot; style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;- Hold &lt;span style=&quot; font-weight:600;&quot;&gt;mouse middle button&lt;/span&gt; to activate zoom rect (zooms in to selected area)&lt;/p&gt;
-&lt;p style=&quot; margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=" font-family:'MS Shell Dlg 2'; font-size:8pt; font-weight:400; font-style:normal;"&gt;
+&lt;p style=" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;This is the chart view widget, where plotted data is displayed. &lt;/p&gt;
+&lt;p align="justify" style=" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;- &lt;span style=" font-weight:600;"&gt;Hold left mouse button&lt;/span&gt; to drag the chart view (Scroll X needs to be off !);&lt;/p&gt;
+&lt;p align="justify" style=" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;- Click&lt;span style=" font-weight:600;"&gt; right mouse button&lt;/span&gt; to activate the context menu - can be used on legend as well;&lt;/p&gt;
+&lt;p align="justify" style=" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;- &lt;span style=" font-weight:600;"&gt;Double click&lt;/span&gt; to fit view to contents;&lt;/p&gt;
+&lt;p align="justify" style=" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;- Use&lt;span style=" font-weight:600;"&gt; mouse wheel&lt;/span&gt; to zoom in/out;&lt;/p&gt;
+&lt;p align="justify" style=" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;- Hold &lt;span style=" font-weight:600;"&gt;mouse middle button&lt;/span&gt; to activate zoom rect (zooms in to selected area)&lt;/p&gt;
+&lt;p style=" margin-top:12px; margin-bottom:12px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;"&gt;&lt;br /&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                   </property>
                  </widget>
                 </item>
                 <item row="1" column="0">
+                 <widget class="QCustomPlot" name="widgetAccelerometerChart" native="true">
+                  <property name="sizePolicy">
+                   <sizepolicy hsizetype="Preferred" vsizetype="Expanding">
+                    <horstretch>0</horstretch>
+                    <verstretch>0</verstretch>
+                   </sizepolicy>
+                  </property>
+                  <property name="minimumSize">
+                   <size>
+                    <width>0</width>
+                    <height>0</height>
+                   </size>
+                  </property>
+                  <property name="cursor">
+                   <cursorShape>CrossCursor</cursorShape>
+                  </property>
+                  <property name="whatsThis">
+                   <string>Accelerometer plot: ax, ay and az.</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
                  <widget class="QScrollArea" name="scrollArea">
                   <property name="sizePolicy">
                    <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
@@ -1192,7 +1214,7 @@ p, li { white-space: pre-wrap; }
                            <set>Qt::AlignCenter</set>
                           </property>
                           <property name="suffix">
-                           <string/>
+                           <string />
                           </property>
                           <property name="prefix">
                            <string>Max missing: </string>
@@ -2082,7 +2104,7 @@ p, li { white-space: pre-wrap; }
                 <bool>false</bool>
                </property>
                <property name="text">
-                <string/>
+                <string />
                </property>
                <property name="autoExclusive">
                 <bool>true</bool>
@@ -2339,7 +2361,7 @@ p, li { white-space: pre-wrap; }
                 <enum>QAbstractSpinBox::NoButtons</enum>
                </property>
                <property name="suffix">
-                <string/>
+                <string />
                </property>
                <property name="minimum">
                 <number>0</number>
@@ -2955,17 +2977,17 @@ p, li { white-space: pre-wrap; }
       <property name="title">
        <string>Save Graph As...</string>
       </property>
-      <addaction name="actionImage"/>
+      <addaction name="actionImage" />
      </widget>
-     <addaction name="actionSave_As"/>
-     <addaction name="menuSave_Graph_As"/>
+     <addaction name="actionSave_As" />
+     <addaction name="menuSave_Graph_As" />
     </widget>
     <widget class="QMenu" name="menuPrint">
      <property name="title">
       <string>Print...</string>
      </property>
-     <addaction name="actionPrint_log"/>
-     <addaction name="actionPrint_Graph"/>
+     <addaction name="actionPrint_log" />
+     <addaction name="actionPrint_Graph" />
     </widget>
     <widget class="QMenu" name="menuExport">
      <property name="title">
@@ -2975,24 +2997,24 @@ p, li { white-space: pre-wrap; }
       <property name="title">
        <string>Parser data...</string>
       </property>
-      <addaction name="actionto_csv"/>
+      <addaction name="actionto_csv" />
      </widget>
-     <addaction name="menuParser_data"/>
+     <addaction name="menuParser_data" />
     </widget>
-    <addaction name="actionImport"/>
-    <addaction name="separator"/>
-    <addaction name="menuSave"/>
-    <addaction name="menuExport"/>
-    <addaction name="menuPrint"/>
-    <addaction name="actionQuit"/>
+    <addaction name="actionImport" />
+    <addaction name="separator" />
+    <addaction name="menuSave" />
+    <addaction name="menuExport" />
+    <addaction name="menuPrint" />
+    <addaction name="actionQuit" />
    </widget>
    <widget class="QMenu" name="menuHelp">
     <property name="title">
      <string>Help</string>
     </property>
-    <addaction name="actionWhats_this"/>
-    <addaction name="actionInfo"/>
-    <addaction name="actionAbout_Qt"/>
+    <addaction name="actionWhats_this" />
+    <addaction name="actionInfo" />
+    <addaction name="actionAbout_Qt" />
    </widget>
    <widget class="QMenu" name="menuView">
     <property name="title">
@@ -3002,26 +3024,26 @@ p, li { white-space: pre-wrap; }
      <property name="title">
       <string>Split View</string>
      </property>
-     <addaction name="actionFull_text_view"/>
-     <addaction name="action50_50_view"/>
-     <addaction name="actionFull_chart"/>
-     <addaction name="actionShow_parser_data"/>
-     <addaction name="actionHide_parser_data"/>
-     <addaction name="actionFull_parser_data"/>
+     <addaction name="actionFull_text_view" />
+     <addaction name="action50_50_view" />
+     <addaction name="actionFull_chart" />
+     <addaction name="actionShow_parser_data" />
+     <addaction name="actionHide_parser_data" />
+     <addaction name="actionFull_parser_data" />
     </widget>
     <widget class="QMenu" name="menuChange_visualisation">
      <property name="title">
       <string>Visualisation</string>
      </property>
-     <addaction name="actionPlotter"/>
-     <addaction name="action3D_orientation"/>
+     <addaction name="actionPlotter" />
+     <addaction name="action3D_orientation" />
     </widget>
-    <addaction name="menuFull_text_view"/>
-    <addaction name="menuChange_visualisation"/>
+    <addaction name="menuFull_text_view" />
+    <addaction name="menuChange_visualisation" />
    </widget>
-   <addaction name="menuFile"/>
-   <addaction name="menuView"/>
-   <addaction name="menuHelp"/>
+   <addaction name="menuFile" />
+   <addaction name="menuView" />
+   <addaction name="menuHelp" />
   </widget>
   <action name="actionImport">
    <property name="text">
@@ -3132,7 +3154,7 @@ p, li { white-space: pre-wrap; }
   </action>
   <action name="actionWhats_this">
    <property name="text">
-    <string>&quot;What's this ?&quot; Mode</string>
+    <string>"What's this ?" Mode</string>
    </property>
    <property name="shortcut">
     <string>F1</string>
@@ -3178,7 +3200,7 @@ p, li { white-space: pre-wrap; }
    </property>
   </action>
  </widget>
- <layoutdefault spacing="6" margin="11"/>
+ <layoutdefault spacing="6" margin="11" />
  <customwidgets>
   <customwidget>
    <class>QCustomPlot</class>
@@ -3196,6 +3218,6 @@ p, li { white-space: pre-wrap; }
   <tabstop>tabWidgetControlSection</tabstop>
   <tabstop>pushButtonSend</tabstop>
  </tabstops>
- <resources/>
- <connections/>
+ <resources />
+ <connections />
 </ui>

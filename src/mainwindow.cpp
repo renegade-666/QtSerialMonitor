@@ -314,9 +314,14 @@ void MainWindow::setupChartOptions()
     checkBoxShowPointMarkers->setToolTip("Draw a small dot on every data point (useful for sparse data)");
     connect(checkBoxShowPointMarkers, &QCheckBox::toggled, this, [this]()
             {
-                for (auto i = 0; i < ui->widgetChart->graphCount(); ++i)
-                    styleGraph(ui->widgetChart->graph(i));
-                ui->widgetChart->replot();
+                const QList<QCustomPlot *> plots = accelerometerChart ? QList<QCustomPlot *>{ui->widgetChart, accelerometerChart}
+                                                                          : QList<QCustomPlot *>{ui->widgetChart};
+                for (QCustomPlot *plot : plots)
+                {
+                    for (auto i = 0; i < plot->graphCount(); ++i)
+                        styleGraph(plot->graph(i));
+                    plot->replot();
+                }
             });
 
     auto *viewGroup = new QGroupBox("View", panel);
@@ -642,41 +647,83 @@ void MainWindow::setupGUI()
 void MainWindow::createChart()
 {
     ui->splitterReceivedData->setSizes(QList<int>({200, 400})); // default
-    ui->widgetChart->setInteractions(QCP::iRangeZoom |
-                                     QCP::iRangeDrag |
-                                     QCP::iSelectPlottables |
-                                     QCP::iSelectLegend);
 
-    QSharedPointer<QCPAxisTickerTime> xTicker(new QCPAxisTickerTime);
-    QSharedPointer<QCPAxisTicker> yTicker(new QCPAxisTicker);
-    xTicker->setTimeFormat("%h:%m:%s:%z");
-    xTicker->setTickCount(5);
-    yTicker->setTickCount(10);
-    yTicker->setTickStepStrategy(QCPAxisTicker::TickStepStrategy::tssReadability);
-    ui->widgetChart->xAxis->setTicker(xTicker);
-    ui->widgetChart->yAxis->setTicker(yTicker);
-    ui->widgetChart->axisRect()->setupFullAxesBox(true);
-    ui->widgetChart->axisRect()->insetLayout()->setInsetAlignment(0, Qt::AlignBottom | Qt::AlignLeft);
-    ui->widgetChart->legend->setVisible(true);
-    QFont legendFont = font();
-    legendFont.setPointSizeF(legendFont.pointSizeF() * 0.9);
-    ui->widgetChart->legend->setFont(legendFont);
-    ui->widgetChart->legend->setIconSize(15, 10);
-    ui->widgetChart->legend->setSelectableParts(QCPLegend::SelectablePart::spItems); // legend box shall not be selectable, only legend items
-    ui->widgetChart->setContextMenuPolicy(Qt::ContextMenuPolicy::CustomContextMenu);
-    ui->widgetChart->xAxis->setRange(-1.0, ui->spinBoxScrollingTimeRange->value());
-    ui->widgetChart->yAxis->setRange(-1.0, 1.0);
+    // Both plots are declared in mainwindow.ui, so their visibility and geometry are
+    // controlled by the form layout itself (not by runtime widget insertion).
+    accelerometerChart = ui->widgetAccelerometerChart;
+    accelerometerChart->setObjectName("widgetAccelerometerChart");
+    accelerometerChart->setWhatsThis("Accelerometer plot: ax, ay and az.");
+    accelerometerChart->yAxis->setLabel("Accelerometer (ax, ay, az)");
+    ui->widgetChart->yAxis->setLabel("Gyroscope (gx, gy, gz)");
+    ui->gridLayout_12->setRowStretch(0, 1);
+    ui->gridLayout_12->setRowStretch(1, 1);
+
+    auto configurePlot = [this](QCustomPlot *plot)
+    {
+        plot->setInteractions(QCP::iRangeZoom | QCP::iRangeDrag | QCP::iSelectPlottables | QCP::iSelectLegend);
+        QSharedPointer<QCPAxisTickerTime> xTicker(new QCPAxisTickerTime);
+        QSharedPointer<QCPAxisTicker> yTicker(new QCPAxisTicker);
+        xTicker->setTimeFormat("%h:%m:%s:%z");
+        xTicker->setTickCount(5);
+        yTicker->setTickCount(10);
+        yTicker->setTickStepStrategy(QCPAxisTicker::TickStepStrategy::tssReadability);
+        plot->xAxis->setTicker(xTicker);
+        plot->xAxis->setLabel("Time");
+        plot->yAxis->setTicker(yTicker);
+        plot->axisRect()->setupFullAxesBox(true);
+        plot->axisRect()->insetLayout()->setInsetAlignment(0, Qt::AlignBottom | Qt::AlignLeft);
+        plot->legend->setVisible(true);
+        QFont legendFont = font();
+        legendFont.setPointSizeF(legendFont.pointSizeF() * 0.9);
+        plot->legend->setFont(legendFont);
+        plot->legend->setIconSize(15, 10);
+        plot->legend->setSelectableParts(QCPLegend::SelectablePart::spItems);
+        plot->setContextMenuPolicy(Qt::CustomContextMenu);
+        plot->xAxis->setRange(-1.0, ui->spinBoxScrollingTimeRange->value());
+        plot->yAxis->setRange(-1.0, 1.0);
+    };
+
+    configurePlot(ui->widgetChart);
+    configurePlot(accelerometerChart);
 
     connect(ui->widgetChart, SIGNAL(mouseDoubleClick(QMouseEvent *)), this, SLOT(on_chartMouseDoubleClickHandler(QMouseEvent *)));
     connect(ui->widgetChart, SIGNAL(mousePress(QMouseEvent *)), this, SLOT(on_chartMousePressHandler(QMouseEvent *)));
     ui->widgetChart->installEventFilter(this); // chart shortcuts, see eventFilter()
-    ui->textBrowserLogs->installEventFilter(this); // Alt and send-keys mode, see eventFilter()
+    ui->textBrowserLogs->installEventFilter(this);
     connect(ui->widgetChart, SIGNAL(mouseMove(QMouseEvent *)), this, SLOT(on_chartMouseMoveHandler(QMouseEvent *)));
-
     connect(ui->widgetChart, SIGNAL(selectionChangedByUser()), this, SLOT(on_chartSelectionChanged()));
     connect(ui->widgetChart, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(on_chartContextMenuRequest(QPoint)));
     connect(ui->widgetChart, SIGNAL(beforeReplot()), this, SLOT(on_chartBeforeReplotSlot()));
 
+    // The accelerometer plot has its own zoom/pan state, but shares the same time window
+    // and auto-scroll policy. It intentionally has no second tracer/context-menu state.
+    accelerometerChart->setContextMenuPolicy(Qt::NoContextMenu);
+    accelerometerChart->installEventFilter(this);
+    connect(accelerometerChart, &QCustomPlot::mouseDoubleClick, this, [this](QMouseEvent *event)
+            {
+                if (event->button() == Qt::LeftButton)
+                {
+                    accelerometerChart->rescaleAxes(true);
+                    accelerometerChart->yAxis->scaleRange(1.20);
+                }
+                else if (event->button() == Qt::MiddleButton)
+                    ui->checkBoxAutoTrack->setChecked(!ui->checkBoxAutoTrack->isChecked());
+                accelerometerChart->replot();
+            });
+    connect(accelerometerChart, &QCustomPlot::selectionChangedByUser, this, [this]()
+            {
+                for (int i = 0; i < accelerometerChart->graphCount(); ++i)
+                {
+                    QCPGraph *graph = accelerometerChart->graph(i);
+                    QCPPlottableLegendItem *item = accelerometerChart->legend->itemWithPlottable(graph);
+                    if (item && (item->selected() || graph->selected()))
+                    {
+                        item->setSelected(true);
+                        graph->setSelection(QCPDataSelection(graph->data()->dataRange()));
+                        break;
+                    }
+                }
+            });
 
     if (ui->checkBoxEnableTracer->isChecked())
     {
@@ -708,8 +755,21 @@ void MainWindow::createChart()
 
     connect(pushButtonPauseChart, &QPushButton::toggled, this, &MainWindow::setChartPaused);
     connect(scrollBarChartHistory, &QScrollBar::valueChanged, this, &MainWindow::scrollChartHistory);
-    connect(ui->widgetChart->xAxis, QOverload<const QCPRange &>::of(&QCPAxis::rangeChanged), this, [this](const QCPRange &)
-            { updateHistoryScrollBar(); });
+    auto synchronizeTimeAxis = [this](QCustomPlot *source, QCustomPlot *target)
+    {
+        if (!source || !target)
+            return;
+        const QCPRange range = source->xAxis->range();
+        const QCPRange targetRange = target->xAxis->range();
+        if (!qFuzzyCompare(range.lower + 1.0, targetRange.lower + 1.0) ||
+            !qFuzzyCompare(range.upper + 1.0, targetRange.upper + 1.0))
+            target->xAxis->setRange(range);
+        updateHistoryScrollBar();
+    };
+    connect(ui->widgetChart->xAxis, QOverload<const QCPRange &>::of(&QCPAxis::rangeChanged), this,
+            [this, synchronizeTimeAxis](const QCPRange &) { synchronizeTimeAxis(ui->widgetChart, accelerometerChart); });
+    connect(accelerometerChart->xAxis, QOverload<const QCPRange &>::of(&QCPAxis::rangeChanged), this,
+            [this, synchronizeTimeAxis](const QCPRange &) { synchronizeTimeAxis(accelerometerChart, ui->widgetChart); });
 
     ui->textBrowserLogs->setHighlightEnabled(false);
     emit on_comboBoxLogFormat_currentIndexChanged(ui->comboBoxLogFormat->currentIndex());
@@ -876,10 +936,10 @@ void MainWindow::applyChartEngine()
 // Experimental: let QCustomPlot draw through OpenGL. Falls back to software drawing if no context.
 void MainWindow::applyOpenGl()
 {
-    if (ui->widgetChart->openGl() == preferences.openGl)
-        return;
-
-    ui->widgetChart->setOpenGl(preferences.openGl, 8); // 8x multisampling for smooth lines
+    if (ui->widgetChart->openGl() != preferences.openGl)
+        ui->widgetChart->setOpenGl(preferences.openGl, 8); // 8x multisampling for smooth lines
+    if (accelerometerChart && accelerometerChart->openGl() != preferences.openGl)
+        accelerometerChart->setOpenGl(preferences.openGl, 8);
     if (preferences.openGl && !ui->widgetChart->openGl())
         addLog("App >>\t OpenGL could not be started - the chart uses normal drawing.", true);
 }
@@ -998,54 +1058,55 @@ void MainWindow::styleGraph(QCPGraph *graph)
 void MainWindow::applyTheme()
 {
     const auto &colors = ThemeManager::instance().colors();
-    QCustomPlot *plot = ui->widgetChart;
+    const QList<QCustomPlot *> plots = accelerometerChart ? QList<QCustomPlot *>{ui->widgetChart, accelerometerChart}
+                                                          : QList<QCustomPlot *>{ui->widgetChart};
 
-    plot->setBackground(colors.chartBackground);
-    plot->axisRect()->setBackground(colors.chartBackground);
-
-    for (QCPAxis *axis : plot->axisRect()->axes())
+    for (QCustomPlot *plot : plots)
     {
-        axis->setBasePen(QPen(colors.chartAxis, 1));
-        axis->setTickPen(QPen(colors.chartAxis, 1));
-        axis->setSubTickPen(QPen(colors.chartAxis, 1));
-        axis->setTickLabelColor(colors.mutedText);
-        axis->setLabelColor(colors.mutedText);
-        axis->grid()->setPen(QPen(colors.chartGrid, 1));
-        axis->grid()->setSubGridVisible(false);
-        axis->grid()->setZeroLinePen(QPen(colors.chartAxis, 1));
-    }
-
-    QColor legendBackground = colors.chartBackground;
-    legendBackground.setAlpha(225);
-    plot->legend->setBrush(legendBackground);
-    plot->legend->setBorderPen(QPen(colors.border));
-    plot->legend->setSelectedBorderPen(QPen(colors.accent));
-    plot->legend->setTextColor(colors.text);
-    plot->legend->setSelectedTextColor(colors.accent);
-
-    for (auto i = 0; i < plot->graphCount(); ++i)
-    {
-        styleGraph(plot->graph(i));
-        if (auto *item = plot->legend->itemWithPlottable(plot->graph(i)))
-            item->setTextColor(legendTextColor(plot->graph(i)->visible()));
+        plot->setBackground(colors.chartBackground);
+        plot->axisRect()->setBackground(colors.chartBackground);
+        for (QCPAxis *axis : plot->axisRect()->axes())
+        {
+            axis->setBasePen(QPen(colors.chartAxis, 1));
+            axis->setTickPen(QPen(colors.chartAxis, 1));
+            axis->setSubTickPen(QPen(colors.chartAxis, 1));
+            axis->setTickLabelColor(colors.mutedText);
+            axis->setLabelColor(colors.mutedText);
+            axis->grid()->setPen(QPen(colors.chartGrid, 1));
+            axis->grid()->setSubGridVisible(false);
+            axis->grid()->setZeroLinePen(QPen(colors.chartAxis, 1));
+        }
+        QColor legendBackground = colors.chartBackground;
+        legendBackground.setAlpha(225);
+        plot->legend->setBrush(legendBackground);
+        plot->legend->setBorderPen(QPen(colors.border));
+        plot->legend->setSelectedBorderPen(QPen(colors.accent));
+        plot->legend->setTextColor(colors.text);
+        plot->legend->setSelectedTextColor(colors.accent);
+        for (auto i = 0; i < plot->graphCount(); ++i)
+        {
+            styleGraph(plot->graph(i));
+            if (auto *item = plot->legend->itemWithPlottable(plot->graph(i)))
+                item->setTextColor(legendTextColor(plot->graph(i)->visible()));
+        }
+        plot->replot();
     }
 
     if (sampleMarker)
         sampleMarker->setPen(QPen(colors.accent, 1));
-
+    if (accelerometerSampleMarker)
+        accelerometerSampleMarker->setPen(QPen(colors.accent, 1));
     if (phaseTracer != nullptr)
     {
         phaseTracer->setPen(QPen(colors.warning, 1.5));
         phaseTracer->setBrush(colors.warning);
     }
-
     ui->textBrowserLogs->setColors(colors.currentLine, colors.gutter, colors.gutterText);
 #ifdef QTSM_HAS_QT_GRAPHS
     if (graphsChartView)
         graphsChartView->applyTheme(preferences.lineQuality == AppPreferences::LineQuality::Fast);
 #endif
     on_highlighLog(ui->lineEditHighlight->text());
-    plot->replot();
 }
 
 void MainWindow::setChartPaused(bool paused)
@@ -1054,7 +1115,11 @@ void MainWindow::setChartPaused(bool paused)
     pushButtonPauseChart->setText(paused ? "Resume" : "Pause");
 
     if (!paused)
+    {
         ui->widgetChart->replot(); // auto-track jumps back to live data
+        if (accelerometerChart)
+            accelerometerChart->replot();
+    }
 }
 
 void MainWindow::scrollChartHistory(int valueMs)
@@ -1066,8 +1131,13 @@ void MainWindow::scrollChartHistory(int valueMs)
         pushButtonPauseChart->setChecked(true);
 
     const double size = ui->widgetChart->xAxis->range().size();
-    ui->widgetChart->xAxis->setRange(valueMs / 1000.0, valueMs / 1000.0 + size);
+    const double lower = valueMs / 1000.0;
+    ui->widgetChart->xAxis->setRange(lower, lower + size);
+    if (accelerometerChart)
+        accelerometerChart->xAxis->setRange(lower, lower + size);
     ui->widgetChart->replot();
+    if (accelerometerChart)
+        accelerometerChart->replot();
 }
 
 // Scroll bar covers all recorded data; its page is the visible time window (milliseconds).
@@ -1075,15 +1145,18 @@ void MainWindow::updateHistoryScrollBar()
 {
     QCPRange dataRange;
     bool haveData = false;
-    for (auto i = 0; i < ui->widgetChart->graphCount(); ++i)
-    {
-        bool found = false;
-        const QCPRange keys = ui->widgetChart->graph(i)->getKeyRange(found);
-        if (!found)
-            continue;
-        dataRange = haveData ? QCPRange(qMin(dataRange.lower, keys.lower), qMax(dataRange.upper, keys.upper)) : keys;
-        haveData = true;
-    }
+    const QList<QCustomPlot *> plots = accelerometerChart ? QList<QCustomPlot *>{ui->widgetChart, accelerometerChart}
+                                                          : QList<QCustomPlot *>{ui->widgetChart};
+    for (QCustomPlot *plot : plots)
+        for (auto i = 0; i < plot->graphCount(); ++i)
+        {
+            bool found = false;
+            const QCPRange keys = plot->graph(i)->getKeyRange(found);
+            if (!found)
+                continue;
+            dataRange = haveData ? QCPRange(qMin(dataRange.lower, keys.lower), qMax(dataRange.upper, keys.upper)) : keys;
+            haveData = true;
+        }
 
     const QCPRange view = ui->widgetChart->xAxis->range();
     updatingHistoryScrollBar = true;
@@ -1111,7 +1184,8 @@ void MainWindow::setupTable()
         ui->tableWidgetParsedData->setHorizontalHeaderItem(column, new QTableWidgetItem(parsedDataHeaders[column]));
 
     // Samples: a browser of the data the chart holds (no copy - see ChartDataModel).
-    chartDataModel.setPlot(ui->widgetChart);
+    chartDataModel.setPlots(accelerometerChart ? QList<QCustomPlot *>{ui->widgetChart, accelerometerChart}
+                                               : QList<QCustomPlot *>{ui->widgetChart});
     ui->tableWidgetLogTable->setModel(&chartDataModel);
     ui->tableWidgetLogTable->setSortingEnabled(false); // always in time order, like the chart
     ui->tableWidgetLogTable->verticalHeader()->setSectionResizeMode(QHeaderView::Fixed); // no per-row size measuring
@@ -1354,26 +1428,32 @@ void MainWindow::clearParsedDataTable()
 
 void MainWindow::showSampleMarker(double key)
 {
-    if (std::isnan(key))
+    auto updateMarker = [this, key](QCustomPlot *plot, QPointer<QCPItemStraightLine> &marker, const QString &name)
     {
-        if (!sampleMarker || !sampleMarker->visible())
+        if (!plot)
             return;
-        sampleMarker->setVisible(false);
-    }
-    else
-    {
-        if (!sampleMarker)
+        if (std::isnan(key))
         {
-            sampleMarker = new QCPItemStraightLine(ui->widgetChart);
-            sampleMarker->setObjectName("sampleMarker");
-            sampleMarker->setSelectable(false);
-            sampleMarker->setPen(QPen(ThemeManager::instance().colors().accent, 1));
+            if (marker)
+                marker->setVisible(false);
+            return;
         }
-        sampleMarker->point1->setCoords(key, 0);
-        sampleMarker->point2->setCoords(key, 1);
-        sampleMarker->setVisible(true);
-    }
+        if (!marker)
+        {
+            marker = new QCPItemStraightLine(plot);
+            marker->setObjectName(name);
+            marker->setSelectable(false);
+            marker->setPen(QPen(ThemeManager::instance().colors().accent, 1));
+        }
+        marker->point1->setCoords(key, 0);
+        marker->point2->setCoords(key, 1);
+        marker->setVisible(true);
+    };
+    updateMarker(ui->widgetChart, sampleMarker, "sampleMarker");
+    updateMarker(accelerometerChart, accelerometerSampleMarker, "accelerometerSampleMarker");
     ui->widgetChart->replot(); // also updates the Qt Graphs chart
+    if (accelerometerChart)
+        accelerometerChart->replot();
 }
 
 void MainWindow::showChartAtTime(double key)
@@ -1383,7 +1463,11 @@ void MainWindow::showChartAtTime(double key)
     ui->checkBoxAutoTrack->setChecked(false); // stay there instead of following live data
     const double width = ui->widgetChart->xAxis->range().size();
     ui->widgetChart->xAxis->setRange(key - width / 2, key + width / 2);
+    if (accelerometerChart)
+        accelerometerChart->xAxis->setRange(key - width / 2, key + width / 2);
     ui->widgetChart->replot();
+    if (accelerometerChart)
+        accelerometerChart->replot();
 }
 
 void MainWindow::goToChartViewInSamples()
@@ -1499,7 +1583,7 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
         }
     }
 
-    bool isChart = watched == ui->widgetChart;
+    bool isChart = watched == ui->widgetChart || watched == accelerometerChart;
 #ifdef QTSM_HAS_QT_GRAPHS
     isChart = isChart || (graphsChartView && watched == graphsChartView);
 #endif
@@ -1541,50 +1625,48 @@ void MainWindow::on_chartBeforeReplotSlot()
 // Auto-scroll X and rescale Y. Runs before every QCustomPlot redraw and on each refresh tick with Qt Graphs.
 void MainWindow::updateChartRanges()
 {
-    static bool isChartEmpty = false;
-    if (ui->widgetChart->graphCount() > 0 && isChartEmpty == true)
+    static bool gyroWasEmpty = true;
+    static bool accelWasEmpty = true;
+    auto updatePlot = [this](QCustomPlot *plot, bool &wasEmpty)
     {
-        isChartEmpty = false;
-        ui->widgetChart->rescaleAxes(); // center plot if new graphs added to empty chart
-    }
-    else if (ui->widgetChart->graphCount() == 0)
-    {
-        isChartEmpty = true;
-    }
-
-    if (ui->checkBoxAutoTrack->isChecked() && !chartPaused && ui->widgetChart->graphCount() > 0)
-    {
-        if (parser.getListTimeStamp().count() > 0)
+        if (!plot)
+            return;
+        if (plot->graphCount() > 0 && wasEmpty)
         {
-            ui->widgetChart->xAxis->setRange((parser.getListTimeStamp().last() / 1000.0) + (ui->spinBoxScrollingTimeRange->value() * 0.05),
-                                             ui->spinBoxScrollingTimeRange->value(), Qt::AlignRight);
+            wasEmpty = false;
+            plot->rescaleAxes();
         }
+        else if (plot->graphCount() == 0)
+            wasEmpty = true;
 
-        if (ui->checkBoxAutoRescaleY->isChecked())
+        if (ui->checkBoxAutoTrack->isChecked() && !chartPaused && plot->graphCount() > 0)
         {
-            bool atLeastOneGraphVisible = false, atLeastOneGraphIsNotFlat = false;
-
-            for (auto i = 0; i < ui->widgetChart->graphCount(); ++i)
+            if (parser.getListTimeStamp().count() > 0)
+                plot->xAxis->setRange((parser.getListTimeStamp().last() / 1000.0) + (ui->spinBoxScrollingTimeRange->value() * 0.05),
+                                      ui->spinBoxScrollingTimeRange->value(), Qt::AlignRight);
+            if (ui->checkBoxAutoRescaleY->isChecked())
             {
-                if (ui->widgetChart->graph(i)->visible())
+                bool atLeastOneGraphVisible = false, atLeastOneGraphIsNotFlat = false;
+                for (auto i = 0; i < plot->graphCount(); ++i)
                 {
+                    if (!plot->graph(i)->visible())
+                        continue;
                     atLeastOneGraphVisible = true;
-
                     bool foundRange = false;
-                    QCPRange valueRange = ui->widgetChart->graph(i)->data().data()->valueRange(foundRange);
-
-                    if (foundRange == true && abs(valueRange.upper - valueRange.lower) >= 0.1)
+                    const QCPRange valueRange = plot->graph(i)->data().data()->valueRange(foundRange);
+                    if (foundRange && qAbs(valueRange.upper - valueRange.lower) >= 0.1)
                         atLeastOneGraphIsNotFlat = true;
                 }
-            }
-
-            if (atLeastOneGraphVisible && atLeastOneGraphIsNotFlat)
-            {
-                ui->widgetChart->yAxis->rescale(true);
-                ui->widgetChart->yAxis->scaleRange(1.20); // leave some space at the top and bottom of the chart
+                if (atLeastOneGraphVisible && atLeastOneGraphIsNotFlat)
+                {
+                    plot->yAxis->rescale(true);
+                    plot->yAxis->scaleRange(1.20);
+                }
             }
         }
-    }
+    };
+    updatePlot(ui->widgetChart, gyroWasEmpty);
+    updatePlot(accelerometerChart, accelWasEmpty);
 }
 
 void MainWindow::on_chartContextMenuRequest(QPoint pos) // right click on chart
@@ -2055,13 +2137,15 @@ void MainWindow::processIncomingLines(const QString &lines, const QList<long> &a
 
 void MainWindow::clearGraphData(bool replot)
 {
-    for (auto i = 0; i < ui->widgetChart->graphCount(); ++i)
+    const QList<QCustomPlot *> plots = accelerometerChart ? QList<QCustomPlot *>{ui->widgetChart, accelerometerChart}
+                                                          : QList<QCustomPlot *>{ui->widgetChart};
+    for (QCustomPlot *plot : plots)
     {
-        ui->widgetChart->graph(i)->data().data()->clear();
+        for (auto i = 0; i < plot->graphCount(); ++i)
+            plot->graph(i)->data().data()->clear();
+        if (replot)
+            plot->replot();
     }
-
-    if (replot)
-        ui->widgetChart->replot();
 }
 
 void MainWindow::sendUDPDatagram(QString message)
@@ -2105,76 +2189,81 @@ void MainWindow::processChart(QStringList labelList, QList<double> numericDataLi
     if (timeStampsList.count() == 0 || labelList.count() == 0 || numericDataList.count() == 0 || ui->pushButtonEnablePlot->isChecked())
         return;
 
-    // Data older than the newest table row (e.g. an external clock that restarted) is not a plain append.
     if (*std::min_element(timeStampsList.cbegin(), timeStampsList.cend()) / 1000.0 < chartDataModel.lastKey())
         chartDataModel.invalidate();
 
-    foreach (auto label, labelList)
+    auto isAccelerometerLabel = [](const QString &label)
     {
-        bool canAddGraph = true;
-        if (ui->widgetChart->graphCount() > 0)
+        const QString normalized = label.trimmed().toLower();
+        return normalized == "ax" || normalized == "ay" || normalized == "az";
+    };
+
+    auto processPlot = [this, &labelList, &numericDataList, &timeStampsList, &isAccelerometerLabel](QCustomPlot *plot, bool accelerometer)
+    {
+        if (!plot)
+            return;
+        for (int j = 0; j < labelList.count(); ++j)
         {
-            for (auto i = 0; i < ui->widgetChart->graphCount(); ++i)
-            {
-                if (ui->widgetChart->graph(i)->name() == label)
+            const QString &label = labelList[j];
+            if (isAccelerometerLabel(label) != accelerometer)
+                continue;
+            bool canAddGraph = true;
+            for (auto i = 0; i < plot->graphCount(); ++i)
+                if (plot->graph(i)->name().compare(label, Qt::CaseInsensitive) == 0)
                 {
                     canAddGraph = false;
                     break;
                 }
+
+            if (canAddGraph && plot->graphCount() < ui->spinBoxMaxGraphs->value() &&
+                ((ui->comboBoxGraphDisplayMode->currentIndex() == 0) ||
+                 (ui->comboBoxGraphDisplayMode->currentIndex() == 1 && customGraphLabels().contains(label)) ||
+                 (ui->comboBoxGraphDisplayMode->currentIndex() == 2 && !customGraphLabels().contains(label))))
+            {
+                plot->addGraph();
+                plot->graph()->setName(label);
+                const QString normalized = label.trimmed().toLower();
+                const int axisColor = normalized.endsWith(QLatin1Char('x')) ? 0 : normalized.endsWith(QLatin1Char('y')) ? 1 : normalized.endsWith(QLatin1Char('z')) ? 2 : graphColorIndex++;
+                plot->graph()->setProperty("colorIndex", axisColor);
+                styleGraph(plot->graph());
+                missingCount.insert(label, 0);
             }
         }
 
-        if (canAddGraph && ui->widgetChart->graphCount() < ui->spinBoxMaxGraphs->value() &&
-
-            ((ui->comboBoxGraphDisplayMode->currentIndex() == 0) ||
-
-             (ui->comboBoxGraphDisplayMode->currentIndex() == 1 && customGraphLabels().contains(label)) || // exact match:
-             (ui->comboBoxGraphDisplayMode->currentIndex() == 2 && !customGraphLabels().contains(label))))  // "Graph 1" != "Graph 10"
+        for (auto i = plot->graphCount() - 1; i >= 0; --i)
         {
-            ui->widgetChart->addGraph();
-            ui->widgetChart->graph()->setName(label);
-
-            // Colours come from the theme palette and don't change when more graphs are added.
-            ui->widgetChart->graph()->setProperty("colorIndex", graphColorIndex++);
-            styleGraph(ui->widgetChart->graph());
-
-            missingCount.insert(label, 0);
-        }
-    }
-
-    for (auto i = ui->widgetChart->graphCount() - 1; i >= 0; --i) // backwards - graphs may be removed
-    {
-        QCPGraph *graph = ui->widgetChart->graph(i);
-
-        for (auto j = 0; j < labelList.count(); ++j)
-        {
-            if (labelList[j] == graph->name()) // If label matches the graphs name - we can start add points to it
+            QCPGraph *graph = plot->graph(i);
+            bool received = false;
+            for (auto j = 0; j < labelList.count(); ++j)
             {
-                if (timeStampsList[j] > 0) // 0 = no external clock value was parsed yet
+                if (isAccelerometerLabel(labelList[j]) != accelerometer ||
+                    labelList[j].compare(graph->name(), Qt::CaseInsensitive) != 0)
+                    continue;
+                received = true;
+                if (timeStampsList[j] > 0)
                     graph->addData(timeStampsList[j] / 1000.0, numericDataList[j]);
-
-                // no break - slower but if we keep checking for duplicates, we can add multiple points at once
             }
-        }
 
-        if (ui->spinBoxMaxTimeRange->value() > 0)
-            graph->data()->removeBefore((timeStampsList.last() / 1000.0) - ui->spinBoxMaxTimeRange->value()); // Remove old points
+            if (ui->spinBoxMaxTimeRange->value() > 0 && !timeStampsList.isEmpty())
+                graph->data()->removeBefore((timeStampsList.last() / 1000.0) - ui->spinBoxMaxTimeRange->value());
 
-        if (ui->spinBoxRemoveOldLabels->value() > 0)
-        {
-            int &missing = missingCount[graph->name()];
-            missing = labelList.contains(graph->name()) ? 0 : missing + 1;
-
-            if (missing > ui->spinBoxRemoveOldLabels->value())
+            if (ui->spinBoxRemoveOldLabels->value() > 0)
             {
-                missingCount.remove(graph->name());
-                if (phaseTracer != nullptr && phaseTracer->graph() == graph)
-                    phaseTracer->setGraph(nullptr);
-                ui->widgetChart->removeGraph(graph);
+                int &missing = missingCount[graph->name()];
+                missing = received ? 0 : missing + 1;
+                if (missing > ui->spinBoxRemoveOldLabels->value())
+                {
+                    missingCount.remove(graph->name());
+                    if (!accelerometer && phaseTracer != nullptr && phaseTracer->graph() == graph)
+                        phaseTracer->setGraph(nullptr);
+                    plot->removeGraph(graph);
+                }
             }
         }
-    }
+    };
 
+    processPlot(ui->widgetChart, false);          // gyroscope + other non-accelerometer channels
+    processPlot(accelerometerChart, true);        // ax, ay, az only
     requestChartRefresh();
 }
 
@@ -2207,6 +2296,8 @@ void MainWindow::refreshChart()
         else
 #endif
             ui->widgetChart->replot();
+        if (accelerometerChart)
+            accelerometerChart->replot();
     }
     updateHistoryScrollBar();
 }
@@ -2258,11 +2349,17 @@ void MainWindow::clearGraphs(bool replot)
         phaseTracer->setGraph(nullptr); // tracer keeps a raw pointer to its graph
 
     ui->widgetChart->clearGraphs();
+    if (accelerometerChart)
+        accelerometerChart->clearGraphs();
     missingCount.clear();
     graphColorIndex = 0;
 
     if (replot)
+    {
         ui->widgetChart->replot();
+        if (accelerometerChart)
+            accelerometerChart->replot();
+    }
 }
 
 // Space/P pause, X auto-scroll, Y auto-scale, T tracer, L legend. Handled on the chart widget itself:
@@ -2454,6 +2551,11 @@ void MainWindow::on_pushButtonClearAll_clicked()
 {
     ui->widgetChart->xAxis->setRange(-1.0, ui->spinBoxScrollingTimeRange->value());
     ui->widgetChart->yAxis->setRange(-1.0, 1.0);
+    if (accelerometerChart)
+    {
+        accelerometerChart->xAxis->setRange(-1.0, ui->spinBoxScrollingTimeRange->value());
+        accelerometerChart->yAxis->setRange(-1.0, 1.0);
+    }
 
     parser.restartChartTimer();
     parser.clearExternalClock();
@@ -2765,6 +2867,11 @@ void MainWindow::on_checkBoxShowLegend_toggled(bool checked)
 {
     ui->widgetChart->legend->setVisible(checked);
     ui->widgetChart->replot();
+    if (accelerometerChart)
+    {
+        accelerometerChart->legend->setVisible(checked);
+        accelerometerChart->replot();
+    }
 #ifdef QTSM_HAS_QT_GRAPHS
     if (graphsChartView)
         graphsChartView->setLegendVisible(checked);
@@ -3167,16 +3274,19 @@ void MainWindow::on_pushButtonSaveParserMemory_clicked()
     QList<double> values;
     QList<long> timeStamps;
 
-    for (auto i = 0; i < ui->widgetChart->graphCount(); ++i)
-    {
-        const QCPGraph *graph = ui->widgetChart->graph(i);
-        for (auto it = graph->data()->constBegin(); it != graph->data()->constEnd(); ++it)
+    const QList<QCustomPlot *> plots = accelerometerChart ? QList<QCustomPlot *>{ui->widgetChart, accelerometerChart}
+                                                          : QList<QCustomPlot *>{ui->widgetChart};
+    for (QCustomPlot *plot : plots)
+        for (auto i = 0; i < plot->graphCount(); ++i)
         {
-            labels.append(graph->name()); // one label per value - the lists are parallel
-            values.append(it->value);
-            timeStamps.append(qRound64(it->key * 1000.0)); // chart keys are seconds, storage is milliseconds
+            const QCPGraph *graph = plot->graph(i);
+            for (auto it = graph->data()->constBegin(); it != graph->data()->constEnd(); ++it)
+            {
+                labels.append(graph->name()); // one label per value - the lists are parallel
+                values.append(it->value);
+                timeStamps.append(qRound64(it->key * 1000.0)); // chart keys are seconds, storage is milliseconds
+            }
         }
-    }
 
     const QString text = ui->comboBoxRAMSaveMode->currentIndex() == 1 ? ui->textBrowserLogs->toPlainText() : QString();
     parser.appendSetToMemory(labels, values, timeStamps, text);

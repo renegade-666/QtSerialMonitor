@@ -19,7 +19,15 @@ ChartDataModel::ChartDataModel(QObject *parent) : QAbstractTableModel(parent)
 
 void ChartDataModel::setPlot(QCustomPlot *newPlot)
 {
-    plot = newPlot;
+    setPlots(newPlot ? QList<QCustomPlot *>{newPlot} : QList<QCustomPlot *>{});
+}
+
+void ChartDataModel::setPlots(const QList<QCustomPlot *> &newPlots)
+{
+    plots.clear();
+    for (QCustomPlot *plot : newPlots)
+        if (plot)
+            plots.append(plot);
     rebuildPending = true;
     refresh();
 }
@@ -27,9 +35,10 @@ void ChartDataModel::setPlot(QCustomPlot *newPlot)
 QList<QCPGraph *> ChartDataModel::currentGraphs() const
 {
     QList<QCPGraph *> result;
-    if (plot)
-        for (auto i = 0; i < plot->graphCount(); ++i)
-            result.append(plot->graph(i));
+    for (const auto &plot : plots)
+        if (plot)
+            for (auto i = 0; i < plot->graphCount(); ++i)
+                result.append(plot->graph(i));
     return result;
 }
 
