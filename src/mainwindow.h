@@ -174,7 +174,12 @@ private:
     NetworkUDP networkUDP;
     Parser parser;
     QCPItemTracer *phaseTracer = nullptr;
-    QHash<QString, int> missingCount; // per graph name: consecutive updates without new data
+    QHash<QString, int> missingCount; // per channel: consecutive updates without new data
+    QCustomPlot *secondaryChart = nullptr; // first additional chart, retained for layout setup
+    QList<QCustomPlot *> chartWidgets; // all configured plots; first is the original widget
+    QHash<QString, QCustomPlot *> channelCharts; // channel label -> chart, populated from charts.json
+    void loadChartConfiguration();
+    void configureSecondaryChart(const QString &title, const QString &yAxisLabel, QCustomPlot *plot);
     int graphColorIndex = 0;
     QString controlCharactersVisibleConvert(QString text);
     QTimer *radioButtonTimer;

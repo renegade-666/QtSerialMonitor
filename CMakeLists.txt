@@ -6,6 +6,9 @@ project(QtSerialMonitor
     HOMEPAGE_URL "https://github.com/mich-w/QtSerialMonitor"
     LANGUAGES CXX)
 
+# Runtime chart routing is user-configurable; copy the default beside the executable.
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/charts.json ${CMAKE_CURRENT_BINARY_DIR}/charts.json COPYONLY)
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_AUTOMOC ON)
@@ -146,6 +149,10 @@ endif()
 add_executable(QtSerialMonitor ${APP_SOURCES})
 
 target_link_libraries(QtSerialMonitor PRIVATE qtsm_gui)
+add_custom_command(TARGET QtSerialMonitor POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_SOURCE_DIR}/charts.json
+            $<TARGET_FILE_DIR:QtSerialMonitor>/charts.json)
 
 foreach(target qtsm_core qtsm_gui QtSerialMonitor)
     if(MSVC)

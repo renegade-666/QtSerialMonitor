@@ -1,6 +1,12 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QJsonParseError>
+#include <QSet>
+
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
@@ -639,9 +645,134 @@ void MainWindow::setupGUI()
     on_updateSerialDeviceList();
 }
 
+void MainWindow::loadChartConfiguration()
+{
+    // Channel names and their chart assignments live only in charts.json.
+    const QString fileName = QCoreApplication::applicationDirPath() + "/charts.json";
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly))
+    {
+        addLog("App >>\t Could not open charts.json; no channels will be plotted until the configuration is fixed.", true);
+        return;
+    }
+
+    QJsonParseError error;
+    const QJsonDocument document = QJsonDocument::fromJson(file.readAll(), &error);
+    if (error.error != QJsonParseError::NoError || !document.isObject())
+    {
+        addLog("App >>\t Invalid charts.json: " + error.errorString(), true);
+        return;
+    }
+
+    const QJsonArray charts = document.object().value("charts").toArray();
+    if (charts.isEmpty())
+    {
+        addLog("App >>\t charts.json must contain at least one chart definition.", true);
+        return;
+    }
+
+    chartWidgets.clear();
+    chartWidgets.append(ui->widgetChart);
+    int baseRow = 0, baseColumn = 0, rowSpan = 1, columnSpan = 1;
+    ui->gridLayout_12->getItemPosition(ui->gridLayout_12->indexOf(ui->widgetChart), &baseRow, &baseColumn, &rowSpan, &columnSpan);
+
+    // Reuse the initially-created second plot when needed; create further plots
+    // on demand. The number of charts is determined entirely by the JSON array.
+    if (charts.size() == 1 && secondaryChart)
+    {
+        ui->gridLayout_12->removeWidget(secondaryChart);
+        delete secondaryChart;
+        secondaryChart = nullptr;
+    }
+
+    for (int chartIndex = 0; chartIndex < charts.size(); ++chartIndex)
+    {
+        const QJsonObject chart = charts.at(chartIndex).toObject();
+        const QString title = chart.value("name").toString(QString("Chart %1").arg(chartIndex + 1));
+        const QString yAxisLabel = chart.value("yAxisLabel").toString();
+        QCustomPlot *plot = nullptr;
+
+        if (chartIndex == 0)
+        {
+            plot = ui->widgetChart;
+            plot->plotLayout()->insertRow(0);
+            plot->plotLayout()->addElement(0, 0, new QCPTextElement(plot, title, QFont("sans", 10, QFont::DemiBold)));
+            plot->yAxis->setLabel(yAxisLabel);
+        }
+        else
+        {
+            if (chartIndex == 1 && secondaryChart)
+                plot = secondaryChart;
+            else
+            {
+                plot = new QCustomPlot(ui->widgetChart->parentWidget());
+                plot->setObjectName(QString("widgetChart_%1").arg(chartIndex + 1));
+                plot->setMinimumHeight(140);
+                plot->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+                ui->gridLayout_12->addWidget(plot, baseRow + chartIndex, baseColumn, 1, columnSpan);
+                if (chartIndex == 1)
+                    secondaryChart = plot;
+            }
+            chartWidgets.append(plot);
+            configureSecondaryChart(title, yAxisLabel, plot);
+        }
+
+        const QJsonArray channels = chart.value("channels").toArray();
+        for (const QJsonValue &value : channels)
+        {
+            const QString label = value.toString().trimmed();
+            if (!label.isEmpty())
+                channelCharts.insert(label, plot);
+        }
+    }
+
+    if (channelCharts.isEmpty())
+        addLog("App >>\t charts.json contains no channel assignments.", true);
+}
+
+void MainWindow::configureSecondaryChart(const QString &title, const QString &yAxisLabel, QCustomPlot *plot)
+{
+    if (!plot)
+        return;
+    plot->plotLayout()->insertRow(0);
+    plot->plotLayout()->addElement(0, 0, new QCPTextElement(plot, title, QFont("sans", 10, QFont::DemiBold)));
+    plot->setInteractions(QCP::iRangeZoom | QCP::iRangeDrag | QCP::iSelectPlottables | QCP::iSelectLegend);
+    QSharedPointer<QCPAxisTickerTime> xTicker(new QCPAxisTickerTime);
+    xTicker->setTimeFormat("%h:%m:%s:%z");
+    xTicker->setTickCount(5);
+    QSharedPointer<QCPAxisTicker> yTicker(new QCPAxisTicker);
+    yTicker->setTickCount(10);
+    yTicker->setTickStepStrategy(QCPAxisTicker::TickStepStrategy::tssReadability);
+    plot->xAxis->setTicker(xTicker);
+    plot->yAxis->setTicker(yTicker);
+    plot->axisRect()->setupFullAxesBox(true);
+    plot->legend->setVisible(true);
+    QFont legendFont = font();
+    legendFont.setPointSizeF(legendFont.pointSizeF() * 0.9);
+    plot->legend->setFont(legendFont);
+    plot->legend->setIconSize(15, 10);
+    plot->legend->setSelectableParts(QCPLegend::SelectablePart::spItems);
+    plot->xAxis->setRange(-1.0, ui->spinBoxScrollingTimeRange->value());
+    plot->yAxis->setRange(-1.0, 1.0);
+    plot->yAxis->setLabel(yAxisLabel);
+    plot->setContextMenuPolicy(Qt::CustomContextMenu);
+    plot->setCursor(Qt::CrossCursor);
+}
+
 void MainWindow::createChart()
 {
     ui->splitterReceivedData->setSizes(QList<int>({200, 400})); // default
+
+    // A second independent QCustomPlot shares the same vertical chart area.
+    // The first chart remains the original widget so existing chart interactions stay intact.
+    secondaryChart = new QCustomPlot(ui->widgetChart->parentWidget());
+    secondaryChart->setObjectName("widgetSecondaryChart");
+    secondaryChart->setMinimumHeight(140);
+    secondaryChart->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Expanding);
+    int chartRow = 0, chartColumn = 0, chartRowSpan = 1, chartColumnSpan = 1;
+    ui->gridLayout_12->getItemPosition(ui->gridLayout_12->indexOf(ui->widgetChart), &chartRow, &chartColumn, &chartRowSpan, &chartColumnSpan);
+    ui->gridLayout_12->addWidget(secondaryChart, chartRow + 1, chartColumn, 1, chartColumnSpan);
+    chartWidgets = {ui->widgetChart, secondaryChart};
     ui->widgetChart->setInteractions(QCP::iRangeZoom |
                                      QCP::iRangeDrag |
                                      QCP::iSelectPlottables |
@@ -684,6 +815,8 @@ void MainWindow::createChart()
         connect(ui->widgetChart, SIGNAL(mouseMove(QMouseEvent *)), this, SLOT(on_tracerShowPointValue(QMouseEvent *)));
     }
 
+    loadChartConfiguration();
+
     // ----- Pause button + history scroll bar under the chart ----- //
     pushButtonPauseChart = new QPushButton("Pause", this);
     pushButtonPauseChart->setObjectName("pushButtonPauseChart");
@@ -698,18 +831,41 @@ void MainWindow::createChart()
     auto *historyRow = chartBarLayout;
     historyRow->addWidget(pushButtonPauseChart);
     historyRow->addWidget(scrollBarChartHistory, 1);
-    // Insert directly under the chart; the chart options panel moves one row down.
+    // Insert the history controls below both chart widgets; the options panel follows them.
     int row = 0, column = 0, rowSpan = 1, columnSpan = 1;
     const int panelIndex = ui->gridLayout_12->indexOf(ui->scrollArea);
     ui->gridLayout_12->getItemPosition(panelIndex, &row, &column, &rowSpan, &columnSpan);
     ui->gridLayout_12->removeWidget(ui->scrollArea);
-    ui->gridLayout_12->addLayout(historyRow, row, column, 1, columnSpan);
-    ui->gridLayout_12->addWidget(ui->scrollArea, row + 1, column, rowSpan, columnSpan);
+    const int historyRowIndex = row + qMax(0, chartWidgets.size() - 1);
+    ui->gridLayout_12->addLayout(historyRow, historyRowIndex, column, 1, columnSpan);
+    ui->gridLayout_12->addWidget(ui->scrollArea, historyRowIndex + 1, column, rowSpan, columnSpan);
 
     connect(pushButtonPauseChart, &QPushButton::toggled, this, &MainWindow::setChartPaused);
     connect(scrollBarChartHistory, &QScrollBar::valueChanged, this, &MainWindow::scrollChartHistory);
-    connect(ui->widgetChart->xAxis, QOverload<const QCPRange &>::of(&QCPAxis::rangeChanged), this, [this](const QCPRange &)
-            { updateHistoryScrollBar(); });
+    auto synchronizeTimeAxis = [this](QCustomPlot *source, QCustomPlot *target)
+    {
+        if (!source || !target)
+            return;
+        if (ui->checkBoxAutoRescaleY->isChecked())
+        {
+            target->rescaleAxes(true);
+            target->yAxis->scaleRange(1.20);
+        }
+        const QCPRange range = source->xAxis->range();
+        const QCPRange targetRange = target->xAxis->range();
+        if (!qFuzzyCompare(range.lower + 1.0, targetRange.lower + 1.0) ||
+            !qFuzzyCompare(range.upper + 1.0, targetRange.upper + 1.0))
+            target->xAxis->setRange(range);
+        updateHistoryScrollBar();
+
+    };
+
+    for (int chartIndex = 1; chartIndex < chartWidgets.size(); ++chartIndex)
+    {
+        QCustomPlot *extraPlot = chartWidgets.at(chartIndex);
+        connect(ui->widgetChart->xAxis, QOverload<const QCPRange &>::of(&QCPAxis::rangeChanged), this,
+                [this, synchronizeTimeAxis, extraPlot](const QCPRange &) { synchronizeTimeAxis(ui->widgetChart, extraPlot); });
+    }
 
     ui->textBrowserLogs->setHighlightEnabled(false);
     emit on_comboBoxLogFormat_currentIndexChanged(ui->comboBoxLogFormat->currentIndex());
@@ -1030,6 +1186,36 @@ void MainWindow::applyTheme()
             item->setTextColor(legendTextColor(plot->graph(i)->visible()));
     }
 
+    for (int chartIndex = 1; chartIndex < chartWidgets.size(); ++chartIndex)
+    {
+        QCustomPlot *extraPlot = chartWidgets.at(chartIndex);
+        extraPlot->setBackground(colors.chartBackground);
+        extraPlot->axisRect()->setBackground(colors.chartBackground);
+        for (QCPAxis *axis : extraPlot->axisRect()->axes())
+        {
+            axis->setBasePen(QPen(colors.chartAxis, 1));
+            axis->setTickPen(QPen(colors.chartAxis, 1));
+            axis->setSubTickPen(QPen(colors.chartAxis, 1));
+            axis->setTickLabelColor(colors.mutedText);
+            axis->setLabelColor(colors.mutedText);
+            axis->grid()->setPen(QPen(colors.chartGrid, 1));
+            axis->grid()->setSubGridVisible(false);
+            axis->grid()->setZeroLinePen(QPen(colors.chartAxis, 1));
+        }
+        extraPlot->legend->setBrush(legendBackground);
+        extraPlot->legend->setBorderPen(QPen(colors.border));
+        extraPlot->legend->setSelectedBorderPen(QPen(colors.accent));
+        extraPlot->legend->setTextColor(colors.text);
+        extraPlot->legend->setSelectedTextColor(colors.accent);
+        for (int i = 0; i < extraPlot->graphCount(); ++i)
+        {
+            styleGraph(extraPlot->graph(i));
+            if (auto *item = extraPlot->legend->itemWithPlottable(extraPlot->graph(i)))
+                item->setTextColor(legendTextColor(extraPlot->graph(i)->visible()));
+        }
+        extraPlot->replot();
+    }
+
     if (sampleMarker)
         sampleMarker->setPen(QPen(colors.accent, 1));
 
@@ -1054,7 +1240,10 @@ void MainWindow::setChartPaused(bool paused)
     pushButtonPauseChart->setText(paused ? "Resume" : "Pause");
 
     if (!paused)
+    {
         ui->widgetChart->replot(); // auto-track jumps back to live data
+        for (int i = 1; i < chartWidgets.size(); ++i) chartWidgets[i]->replot();
+    }
 }
 
 void MainWindow::scrollChartHistory(int valueMs)
@@ -1067,7 +1256,10 @@ void MainWindow::scrollChartHistory(int valueMs)
 
     const double size = ui->widgetChart->xAxis->range().size();
     ui->widgetChart->xAxis->setRange(valueMs / 1000.0, valueMs / 1000.0 + size);
+    for (int i = 1; i < chartWidgets.size(); ++i)
+        chartWidgets[i]->xAxis->setRange(ui->widgetChart->xAxis->range());
     ui->widgetChart->replot();
+    for (int i = 1; i < chartWidgets.size(); ++i) chartWidgets[i]->replot();
 }
 
 // Scroll bar covers all recorded data; its page is the visible time window (milliseconds).
@@ -2055,13 +2247,13 @@ void MainWindow::processIncomingLines(const QString &lines, const QList<long> &a
 
 void MainWindow::clearGraphData(bool replot)
 {
-    for (auto i = 0; i < ui->widgetChart->graphCount(); ++i)
+    for (QCustomPlot *plot : chartWidgets)
     {
-        ui->widgetChart->graph(i)->data().data()->clear();
+        if (!plot) continue;
+        for (int i = 0; i < plot->graphCount(); ++i)
+            plot->graph(i)->data().data()->clear();
+        if (replot) plot->replot();
     }
-
-    if (replot)
-        ui->widgetChart->replot();
 }
 
 void MainWindow::sendUDPDatagram(QString message)
@@ -2102,79 +2294,75 @@ void MainWindow::sendUDPDatagram(QString message)
 
 void MainWindow::processChart(QStringList labelList, QList<double> numericDataList, QList<long> timeStampsList)
 {
-    if (timeStampsList.count() == 0 || labelList.count() == 0 || numericDataList.count() == 0 || ui->pushButtonEnablePlot->isChecked())
+    if (timeStampsList.isEmpty() || labelList.isEmpty() || numericDataList.isEmpty() || ui->pushButtonEnablePlot->isChecked())
         return;
 
-    // Data older than the newest table row (e.g. an external clock that restarted) is not a plain append.
+    // ChartDataModel remains attached to the original plot. Invalidate it when
+    // timestamps arrive out of order, just as the original single-chart code did.
     if (*std::min_element(timeStampsList.cbegin(), timeStampsList.cend()) / 1000.0 < chartDataModel.lastKey())
         chartDataModel.invalidate();
 
-    foreach (auto label, labelList)
+    // Only labels assigned in charts.json are plotted. All parsing, logging,
+    // tables and RAM recording continue to receive every parsed channel.
+    QSet<QCustomPlot *> touchedPlots;
+    for (int j = 0; j < labelList.size() && j < numericDataList.size() && j < timeStampsList.size(); ++j)
     {
-        bool canAddGraph = true;
-        if (ui->widgetChart->graphCount() > 0)
+        const QString &label = labelList[j];
+        QCustomPlot *plot = channelCharts.value(label, nullptr);
+        if (!plot)
+            continue;
+        touchedPlots.insert(plot);
+
+        QCPGraph *graph = nullptr;
+        for (int i = 0; i < plot->graphCount(); ++i)
         {
-            for (auto i = 0; i < ui->widgetChart->graphCount(); ++i)
+            if (plot->graph(i)->name() == label)
             {
-                if (ui->widgetChart->graph(i)->name() == label)
+                graph = plot->graph(i);
+                break;
+            }
+        }
+
+        if (!graph && plot->graphCount() < ui->spinBoxMaxGraphs->value() &&
+            ((ui->comboBoxGraphDisplayMode->currentIndex() == 0) ||
+             (ui->comboBoxGraphDisplayMode->currentIndex() == 1 && customGraphLabels().contains(label)) ||
+             (ui->comboBoxGraphDisplayMode->currentIndex() == 2 && !customGraphLabels().contains(label))))
+        {
+            plot->addGraph();
+            graph = plot->graph();
+            graph->setName(label);
+            graph->setProperty("colorIndex", graphColorIndex++);
+            styleGraph(graph);
+            missingCount.insert(label, 0);
+        }
+
+        if (graph && timeStampsList[j] > 0)
+            graph->addData(timeStampsList[j] / 1000.0, numericDataList[j]);
+    }
+
+    const double newestTime = timeStampsList.last() / 1000.0;
+    for (QCustomPlot *plot : touchedPlots)
+    {
+        for (int i = plot->graphCount() - 1; i >= 0; --i)
+        {
+            QCPGraph *graph = plot->graph(i);
+            if (ui->spinBoxMaxTimeRange->value() > 0)
+                graph->data()->removeBefore(newestTime - ui->spinBoxMaxTimeRange->value());
+
+            if (ui->spinBoxRemoveOldLabels->value() > 0)
+            {
+                int &missing = missingCount[graph->name()];
+                missing = labelList.contains(graph->name()) ? 0 : missing + 1;
+                if (missing > ui->spinBoxRemoveOldLabels->value())
                 {
-                    canAddGraph = false;
-                    break;
+                    missingCount.remove(graph->name());
+                    if (phaseTracer && phaseTracer->graph() == graph)
+                        phaseTracer->setGraph(nullptr);
+                    plot->removeGraph(graph);
                 }
             }
         }
-
-        if (canAddGraph && ui->widgetChart->graphCount() < ui->spinBoxMaxGraphs->value() &&
-
-            ((ui->comboBoxGraphDisplayMode->currentIndex() == 0) ||
-
-             (ui->comboBoxGraphDisplayMode->currentIndex() == 1 && customGraphLabels().contains(label)) || // exact match:
-             (ui->comboBoxGraphDisplayMode->currentIndex() == 2 && !customGraphLabels().contains(label))))  // "Graph 1" != "Graph 10"
-        {
-            ui->widgetChart->addGraph();
-            ui->widgetChart->graph()->setName(label);
-
-            // Colours come from the theme palette and don't change when more graphs are added.
-            ui->widgetChart->graph()->setProperty("colorIndex", graphColorIndex++);
-            styleGraph(ui->widgetChart->graph());
-
-            missingCount.insert(label, 0);
-        }
     }
-
-    for (auto i = ui->widgetChart->graphCount() - 1; i >= 0; --i) // backwards - graphs may be removed
-    {
-        QCPGraph *graph = ui->widgetChart->graph(i);
-
-        for (auto j = 0; j < labelList.count(); ++j)
-        {
-            if (labelList[j] == graph->name()) // If label matches the graphs name - we can start add points to it
-            {
-                if (timeStampsList[j] > 0) // 0 = no external clock value was parsed yet
-                    graph->addData(timeStampsList[j] / 1000.0, numericDataList[j]);
-
-                // no break - slower but if we keep checking for duplicates, we can add multiple points at once
-            }
-        }
-
-        if (ui->spinBoxMaxTimeRange->value() > 0)
-            graph->data()->removeBefore((timeStampsList.last() / 1000.0) - ui->spinBoxMaxTimeRange->value()); // Remove old points
-
-        if (ui->spinBoxRemoveOldLabels->value() > 0)
-        {
-            int &missing = missingCount[graph->name()];
-            missing = labelList.contains(graph->name()) ? 0 : missing + 1;
-
-            if (missing > ui->spinBoxRemoveOldLabels->value())
-            {
-                missingCount.remove(graph->name());
-                if (phaseTracer != nullptr && phaseTracer->graph() == graph)
-                    phaseTracer->setGraph(nullptr);
-                ui->widgetChart->removeGraph(graph);
-            }
-        }
-    }
-
     requestChartRefresh();
 }
 
@@ -2206,7 +2394,11 @@ void MainWindow::refreshChart()
         }
         else
 #endif
+        {
             ui->widgetChart->replot();
+        }
+        for (int i = 1; i < chartWidgets.size(); ++i)
+            chartWidgets[i]->replot();
     }
     updateHistoryScrollBar();
 }
@@ -2258,11 +2450,16 @@ void MainWindow::clearGraphs(bool replot)
         phaseTracer->setGraph(nullptr); // tracer keeps a raw pointer to its graph
 
     ui->widgetChart->clearGraphs();
+    for (int i = 1; i < chartWidgets.size(); ++i)
+        chartWidgets[i]->clearGraphs();
     missingCount.clear();
     graphColorIndex = 0;
 
     if (replot)
+    {
         ui->widgetChart->replot();
+        for (int i = 1; i < chartWidgets.size(); ++i) chartWidgets[i]->replot();
+    }
 }
 
 // Space/P pause, X auto-scroll, Y auto-scale, T tracer, L legend. Handled on the chart widget itself:

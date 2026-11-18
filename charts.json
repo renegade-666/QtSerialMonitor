@@ -1,0 +1,22 @@
+{
+  "charts": [
+    {
+      "name": "Gyroscope",
+      "yAxisLabel": "Angular velocity",
+      "channels": [
+        "gx",
+        "gy",
+        "gz"
+      ]
+    },
+    {
+      "name": "Accelerometer",
+      "yAxisLabel": "Acceleration",
+      "channels": [
+        "ax",
+        "ay",
+        "az"
+      ]
+    }
+  ]
+}
